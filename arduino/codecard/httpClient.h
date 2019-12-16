@@ -3,6 +3,27 @@
   
 */
 
+#include <WiFiServerSecureBearSSL.h>
+
+// WAM - HTTP client should send url with no host/port
+String hostlessUrl(String url) {
+  String protocol = parseValue(url, '/', 0);
+  String host = parseValue(url, '/', 2);
+  String portString = parseValue(host, ':', 1) ;
+  host = parseValue(host, ':', 0);
+
+  // WAM - do not send host, port el al in url ...
+  if (portString.length() == 0) {
+    return url.substring(protocol.length() + host.length() + 2);
+  }
+  String shorturl = url.substring(protocol.length() + host.length() + portString.length() + 3);
+  if (shorturl.length() == 0) {
+    return "/";
+  }
+
+  return shorturl;
+}
+
 String httpRequest(WiFiClient& client, String httpMethod, String url, String host, String btnLabel, int btnFunction){
   
   String mac = WiFi.macAddress();
@@ -34,39 +55,48 @@ String httpRequest(WiFiClient& client, String httpMethod, String url, String hos
 //    return "";
 //  }
 
-//  char status[32] = {0};
-//  client.readBytesUntil('\r', status, sizeof(status));
-//  if (strcmp(status, "HTTP/1.0 200 OK") != 0) {
-//    Serial.print(F("  Unexpected response: "));
-//    Serial.println(status);
-//    client.stop();
-//    return "";
-//  }
+ // WAM - bad HTTP response (not found url??)
+ char status[32] = {0};
+ client.readBytesUntil('\r', status, sizeof(status));
+ if (strcmp(status, "HTTP/1.0 200 OK") != 0 and strcmp(status, "HTTP/1.1 200 OK") !=0){
+    Serial.print(F("  Unexpected response: "));
+    Serial.println(status);
+    Serial.print(F("  Url: "));
+    Serial.println(url);
+    client.stop();
+    return "";
+  }
     
-  char findConntentType[] = "ype: ";
-  if (client.find(findConntentType)) {
-    contentType = client.readStringUntil('\n');
+  const char findContentType[] = "ype: ";
+  if (client.find(findContentType)) {
+    contentType = client.readStringUntil('\r\n');
+    Serial.print(F("    Content-Type: "));
     Serial.println(contentType);
-  } 
+  } else {
+    Serial.println(F("  Content-Type header not found"));
+  }
 
 
   char endOfHeaders[] = "\r\n\r\n";
   if (!client.find(endOfHeaders)) {
-    Serial.println(F("  Invalid response"));
+    Serial.println(F("  Invalid response (no end of headers)"));
     return "";
   } 
-
 
   if (contentType.indexOf("json") > -1) {
     responseString = client.readStringUntil('}');
     responseString = responseString + "}";
-  }else {
+    // WAM - hmmm - image requests happen in displayImageFromUrl()
+  //} elseif (contentType.indexOf("image") > -1  {
+  //  responseString = client.read();
+  } else {
     responseString = client.readStringUntil('\r\n');
   }
-  
-  
+
   client.stop();
 
+  Serial.println(F("httpRequest() returns:"));
+  Serial.println(responseString);
   return responseString;
 }
 
@@ -113,7 +143,7 @@ String secureRequest(String host, int port, String url, String btnLabel, int btn
     return "";
   }
 
-  return httpRequest(client, httpMethod, url, host, btnLabel, btnFunction);
+  return httpRequest(client, httpMethod, hostlessUrl(url), host, btnLabel, btnFunction);
   
 }
 
@@ -140,15 +170,15 @@ String request(String host, int port, String url, String btnLabel, int btnFuncti
     return "";
   }
 
-  return httpRequest(client, httpMethod, url, host, btnLabel, btnFunction);
+  return httpRequest(client, httpMethod, hostlessUrl(url), host, btnLabel, btnFunction);
 }
 
 
 void httpsImage(String host, int port, String url, int16_t x, int16_t y, String fingerprint, bool with_color) {
 
   // WiFiClientSecure secureClient;
-  // BearSSL::WiFiClientSecure secureClient;
-  axTLS::WiFiClientSecure secureClient;
+  BearSSL::WiFiClientSecure secureClient;
+  // WAM axTLS::WiFiClientSecure secureClient;
   
   bool connection_ok = false;
   uint32_t startTime = millis();
@@ -222,7 +252,7 @@ void httpImage(String host, int port, String url, int16_t x, int16_t y, bool wit
   
   if ((x >= display.width()) || (y >= display.height())) return;
 
-  Serial.println(F("Request:"));
+  Serial.println(F("Image Request:"));
   Serial.print(F("  host: "));
   Serial.println(host);
   Serial.print(F("  port: "));
@@ -247,7 +277,7 @@ void httpImage(String host, int port, String url, int16_t x, int16_t y, bool wit
     String line = client.readStringUntil('\n');
     if (!connection_ok)
     {
-      connection_ok = line.startsWith("HTTP/1.1 200 OK"); // || line.startsWith("HTTP/1.1 30");
+      connection_ok = line.startsWith("HTTP/1.1 200 OK") or line.startsWith("HTTP/1.0 200 OK"); // || line.startsWith("HTTP/1.1 30");
       if (connection_ok) Serial.println(line);
       //if (!connection_ok) Serial.println(line);
     }
@@ -260,6 +290,7 @@ void httpImage(String host, int port, String url, int16_t x, int16_t y, bool wit
     }
   }
   if (!connection_ok) return;
+  Serial.println(F("httpImage() handing off to displayImageFromUrl()"));
   displayImageFromUrl(client, x, y, connection_ok, with_color);
 }
 
@@ -268,7 +299,9 @@ void imageFromUrl(String url, int16_t x, int16_t y, String fingerprint, bool wit
   String host = parseValue(url, '/', 2);
   String portString = parseValue(host, ':', 1) ;
   host = parseValue(host, ':', 0);
-  
+  url = hostlessUrl(url);
+  Serial.print(F("Image Url "));
+  Serial.println(url);
   if (protocol == "https:") {
     int port = (portString.length() != 0) ? portString.toInt() : 443;
     httpsImage(host, port, url, x, y, fingerprint, with_color);

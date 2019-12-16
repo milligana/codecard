@@ -4,57 +4,73 @@
 */
 
 void parseJson(String jsonString) {  
+  // WAM - can be up to 9 template/descriptor keys in our JSON object
+  Serial.println(F("JSON Payload"));
+  Serial.println(jsonString);
+  const int capacity = JSON_OBJECT_SIZE(99);
+  //DynamicJsonDocument doc(capacity);
+  StaticJsonDocument<capacity> doc;
+  DeserializationError error = deserializeJson(doc, jsonString);
+
+  if (error) {
+    Serial.println(F("JSON deserializaion failed"));
+    Serial.println(error.c_str());
+    Serial.println(jsonString);
+    return;
+  }
+
+  /* WAM
   
-  const size_t capacity = jsonString.length();
-  DynamicJsonBuffer jsonBuffer(capacity);
-  //StaticJsonBuffer<400> jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(jsonString);
+  JsonObject root = jsonBuffer.as<JsonObject>(); // get the root object
 
   String jsonStr;
-  root.printTo(jsonStr);
+  serializeJson(root, jsonStr);
   Serial.println(F("Response: "));
   Serial.println("  " + jsonStr);
   Serial.println(F(">>>"));
 
-  if (!root.success()) {
+  if (!root.isNull()) {
     Serial.println(F("JSON parsing failed!"));
     Serial.println(F(">>>"));
     template1("Invalid response", "Please verify JSON",  jsonString ,"fail","","", "");
     //saveToMemory(getKeyIndex("showdefaultscreen"), "true");
     return;
   }
-
+  */
+  
   //saveToMemory(getKeyIndex("lastpayload"), jsonStr);
   
-  String templateName = root["template"].as<String>();
-  String title = root["title"].as<String>();
-  String subtitle = root["subtitle"].as<String>();
-  String body = root["bodytext"].as<String>();
-  String icon = root["icon"].as<String>();
-  String backgroundImage = root["backgroundImage"].as<String>();
-  String backgroundColor = root["backgroundColor"].as<String>();
-  String badge = root["badge"].as<String>();
-  String fingerprint = root["fingerprint"].as<String>();
-  String barcode = root["barcode"].as<String>();
+  String templateName = doc["template"].as<String>();
+  String title = doc["title"].as<String>();
+  String subtitle = doc["subtitle"].as<String>();
+  String body = doc["bodytext"].as<String>();
+  String icon = doc["icon"].as<String>();
+  String backgroundImage = doc["backgroundImage"].as<String>();
+  String backgroundColor = doc["backgroundColor"].as<String>();
+  String badge = doc["badge"].as<String>();
+  String fingerprint = doc["fingerprint"].as<String>();
+  String barcode = doc["barcode"].as<String>();
 
+  Serial.print(F("Icon = "));
+  Serial.println(icon);
 
   if (templateName == "custom"){
-    String titleFont = root["titleFont"].as<String>();
-    String titleX = root["titleX"].as<String>();
-    String titleY = root["titleY"].as<String>();
-    String subtitleFont = root["subtitleFont"].as<String>();
-    String subTitleX = root["subTitleX"].as<String>();
-    String subTitleY = root["subTitleY"].as<String>();
-    String bodyFont = root["bodyFont"].as<String>();
-    String bodyX = root["bodyX"].as<String>();
-    String bodyY = root["bodyY"].as<String>();
-    String iconX = root["iconX"].as<String>();
-    String iconY = root["iconY"].as<String>();
+    String titleFont = doc["titleFont"].as<String>();
+    String titleX = doc["titleX"].as<String>();
+    String titleY = doc["titleY"].as<String>();
+    String subtitleFont = doc["subtitleFont"].as<String>();
+    String subTitleX = doc["subTitleX"].as<String>();
+    String subTitleY = doc["subTitleY"].as<String>();
+    String bodyFont = doc["bodyFont"].as<String>();
+    String bodyX = doc["bodyX"].as<String>();
+    String bodyY = doc["bodyY"].as<String>();
+    String iconX = doc["iconX"].as<String>();
+    String iconY = doc["iconY"].as<String>();
     custom();
   }
   
 
-  jsonBuffer.clear();
+  // WAM dynamic only???  doc.clear();
     
   // Serial.println("Free HEAP: " + String(ESP.getFreeHeap()));
   
@@ -91,7 +107,7 @@ void parseJson(String jsonString) {
 
 void parseJsonObject(JsonObject& root) {
   String jsonStr;
-  root.printTo(jsonStr);
+  serializeJson(root, jsonStr);
   parseJson(jsonStr);
 }
 

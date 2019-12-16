@@ -89,6 +89,7 @@ void drawIcon128(int x, int y, String icon, long color){
 void drawBackground(int x, int y, String backgroundImage, long color){ 
   if (backgroundImage == "codeone") { display.drawInvertedBitmap(x, y, codeone264, display.width(), display.height(), color); return; } 
   if (backgroundImage == "oracle") { display.drawInvertedBitmap(x, y, oracle264, display.width(), display.height(), color); return; } 
+  
 }
 
 void drawBadge(int x, int y, int radius, String badge, long color) {
@@ -180,6 +181,8 @@ void template1(String title, String subtitle, String body, String icon, String b
 
   if (icon != "" && icon.indexOf("http") > -1 && badge == ""){
     imageFromUrl(icon, 0, 0, fingerprint , false);
+  } else {
+    Serial.println("template1 - no image required");
   }
     
 }
@@ -265,20 +268,20 @@ void template3(String title, String subtitle, String body, String icon, String b
     display.println(title.substring(0, 16));  
   
       // subtitle 
-    display.setFont(&FreeSans9pt7b);
+    display.setFont(&FreeSansBold9pt7b);
     display.setCursor(1, 43);
     display.println(subtitle.substring(0, 24));
   
     // body
     display.setFont(&FreeSans9pt7b);
-    display.setCursor(0, 80);
+    display.setCursor(0, 70);
     display.println(body.substring(0, 170));
     
   }
   while (display.nextPage());
 
   if (icon != "" && icon.indexOf("http") > -1 && badge == ""){
-    imageFromUrl(icon, 0, -display.width() + 64, fingerprint , false);
+    imageFromUrl(icon, 100, 0, fingerprint , false);
   }
     
 }
@@ -426,12 +429,12 @@ void template7(String title, String subtitle, String backgroundColor, String bac
   display.firstPage();
   
   do {
-
     if (backgroundImage.indexOf("http") == -1){
       display.fillScreen(txtColor);
       drawBackground(0, 0, backgroundImage, bgColor);
-    }else {
-      display.fillScreen(bgColor);
+    }
+    else {
+      imageFromUrl(backgroundImage, 0, 0, fingerprint , false);
     }
   
     display.setTextColor(txtColor);
@@ -447,10 +450,14 @@ void template7(String title, String subtitle, String backgroundColor, String bac
     int x = display.width() / 2 - subtitle.length() / 2 * 9;
     display.setCursor(x, display.height() - 15);
     display.println(subtitle); 
-
     
   }
   while (display.nextPage());
+
+  // WAM - seems this overwrites text ...
+  //if (backgroundImage.indexOf("http") > -1){
+  //  imageFromUrl(backgroundImage, 0, 0, fingerprint , false);
+  //}
 
 }
 
